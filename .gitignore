@@ -1,0 +1,8 @@
+# Upstream source catalogues: ~35 MB of build input, not site content.
+# Re-download with tools/fetch_sources.sh
+data/raw/
+
+# Generated site. Rebuild with tools/build_site.py
+dist/
+
+.DS_Store

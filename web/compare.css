@@ -1,0 +1,94 @@
+:root {
+  --bg: #16181c;
+  --panel: #1e2126;
+  --line: #333840;
+  --fg: #e6e8ec;
+  --dim: #8b929e;
+  --ok: #3f9a4a;
+  --bad: #c0483f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+header, .opts {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+header { justify-content: space-between; position: sticky; top: 0; z-index: 5; }
+.opts { gap: 18px; font-size: 13px; }
+.nav, .verdicts { display: flex; gap: 8px; align-items: center; }
+
+.dim { color: var(--dim); font-size: 12px; }
+a.dim { text-decoration: none; white-space: nowrap; }
+a.dim:hover { color: var(--fg); }
+
+button, select {
+  background: #2a2e35;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover, select:hover { background: #343941; }
+select { min-width: 230px; }
+
+.verdicts .ok.active { background: var(--ok); border-color: var(--ok); }
+.verdicts .bad.active { background: var(--bad); border-color: var(--bad); }
+
+label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+input[type="range"] { width: 110px; }
+output { color: var(--dim); min-width: 40px; }
+
+main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+figure { margin: 0; position: relative; }
+
+figcaption {
+  color: var(--dim);
+  font-size: 12px;
+  margin-bottom: 6px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+img#iau, canvas#render {
+  width: 100%;
+  display: block;
+  background: #f2f2f2;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.sheet {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: 12px;
+  background: rgba(20, 22, 26, .85);
+}
+
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; }
+}

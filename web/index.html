@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constellation Spotter</title>
+<link rel="stylesheet" href="game.css">
+
+<header>
+  <strong>Constellation Spotter</strong>
+  <span id="score" class="dim"></span>
+  <span class="grow"></span>
+  <span class="presets">
+    <button data-preset="easy">easy</button>
+    <button data-preset="normal">normal</button>
+    <button data-preset="hard">hard</button>
+  </span>
+  <a href="compare.html" class="dim">line check →</a>
+</header>
+
+<main>
+  <div class="stage">
+    <canvas id="sky"></canvas>
+  </div>
+
+  <aside>
+    <h2>Which constellation is this?</h2>
+    <div id="choices"></div>
+    <p id="verdict" class="verdict"></p>
+    <div class="row">
+      <button id="next" hidden>next <kbd>⏎</kbd></button>
+      <button id="skip">skip <kbd>S</kbd></button>
+    </div>
+
+    <h3>Difficulty</h3>
+    <label><input type="checkbox" id="lines"> show figure lines <kbd>L</kbd></label>
+    <label><input type="checkbox" id="rotate"> random orientation <kbd>O</kbd></label>
+    <label><input type="checkbox" id="colour"> star colour <kbd>C</kbd></label>
+
+    <label class="stacked">
+      light pollution
+      <input type="range" id="bortle" min="1" max="9" step="1">
+      <output id="bortleOut"></output>
+    </label>
+
+    <label class="stacked">
+      field of view
+      <input type="range" id="fov" min="1.4" max="4" step="0.1">
+      <output id="fovOut"></output>
+    </label>
+
+    <p class="hint dim">
+      <kbd>1</kbd>–<kbd>4</kbd> answer · sliders take <kbd>←</kbd><kbd>→</kbd>
+      once focused
+    </p>
+  </aside>
+</main>
+
+<script type="module" src="game.js"></script>
