@@ -19,15 +19,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # data/*.json are committed, so there is nothing to download and
       # build_data.py does not need to run here.
       - name: Assemble dist/
         run: python3 tools/build_site.py
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      # Pages must already be enabled with "GitHub Actions" as the source
+      # (Settings -> Pages), or this step fails with "Get Pages site failed".
+      # The action's `enablement: true` input can create it instead, but that
+      # needs a PAT -- it does not work with the default GITHUB_TOKEN -- so the
+      # one-time manual toggle is the simpler route.
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -39,4 +44,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
