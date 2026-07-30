@@ -145,6 +145,7 @@ each labelled `Latin (Русское)`. Score and settings persist.
 | `S` | skip |
 | `Enter` / `Space` | next round |
 | `L` | toggle figure lines |
+| `B` | toggle constellation boundaries |
 | `O` | toggle random orientation |
 | `C` | toggle star colour |
 
@@ -156,6 +157,9 @@ Difficulty, as individual controls plus **easy / normal / hard** presets:
 
 - **show figure lines** — on for easy; otherwise the figure is only revealed
   after you answer.
+- **show boundaries** — the constellation's official IAU boundary, dashed.
+  A strong hint, so it is on for easy only. Drawn under the stars, and the
+  easy preset uses a slightly wider field (2.1×) so the boundary fits.
 - **random orientation** — rolls the sky by a random angle. The framing measures
   the figure's extent *after* the roll, so a rotated constellation still fits.
 - **light pollution** — a Bortle 1–9 slider. It sets the limiting magnitude
@@ -165,7 +169,8 @@ Difficulty, as individual controls plus **easy / normal / hard** presets:
 - **field of view** — how many figure-widths of sky to show. Wider means more
   surrounding stars to get lost in.
 
-A round is shareable as a URL: `?c=Ori&lines=1&rotate=1&bortle=6&fov=3.2`.
+A round is shareable as a URL:
+`?c=Ori&lines=1&boundary=1&rotate=1&bortle=6&fov=3.2`.
 
 `web/sky.js` — projection, star sizing, colour — is shared by the game and the
 comparison view.

@@ -29,7 +29,8 @@ const state = {
   // null when the round was skipped rather than answered.
   target: null, choices: [], done: false, answered: null, roll: 0,
   score: { correct: 0, total: 0, streak: 0, best: 0 },
-  opts: { rotate: false, lines: false, bortle: 3, fov: 2.4, colour: true },
+  opts: { rotate: false, lines: false, boundary: false,
+          bortle: 3, fov: 2.4, colour: true },
 };
 
 // ------------------------------------------------------------------ loading
@@ -56,6 +57,7 @@ async function load() {
   for (const [key, parse] of Object.entries({
     rotate: (v) => v === '1' || v === 'true',
     lines: (v) => v === '1' || v === 'true',
+    boundary: (v) => v === '1' || v === 'true',
     colour: (v) => v === '1' || v === 'true',
     bortle: (v) => Math.max(1, Math.min(9, Number(v))),
     fov: (v) => Math.max(1.4, Math.min(4, Number(v))),
@@ -193,6 +195,16 @@ function render() {
   const project = frame(c, W, H);
   const limit = bortle.nelm;
 
+  // Boundaries go down before the stars so the stars sit on top of them.
+  if (state.opts.boundary) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(150,175,210,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    for (const poly of c.boundary) strokePath(ctx, project, poly);
+    ctx.restore();
+  }
+
   for (const s of state.stars) {
     if (s.mag > limit) continue;
     const p = project(s.ra, s.dec);
@@ -271,6 +283,7 @@ function renderScore() {
 function syncControls() {
   $('#rotate').checked = state.opts.rotate;
   $('#lines').checked = state.opts.lines;
+  $('#boundary').checked = state.opts.boundary;
   $('#colour').checked = state.opts.colour;
   $('#bortle').value = state.opts.bortle;
   $('#fov').value = state.opts.fov;
@@ -305,6 +318,7 @@ function wire() {
   };
   bind('#rotate', 'rotate', (el) => el.checked);
   bind('#lines', 'lines', (el) => el.checked);
+  bind('#boundary', 'boundary', (el) => el.checked);
   bind('#colour', 'colour', (el) => el.checked);
   bind('#bortle', 'bortle', (el) => Number(el.value));
   bind('#fov', 'fov', (el) => Number(el.value));
@@ -312,9 +326,9 @@ function wire() {
   for (const btn of document.querySelectorAll('[data-preset]')) {
     btn.onclick = () => {
       const p = {
-        easy:   { rotate: false, lines: true,  bortle: 2, fov: 1.8 },
-        normal: { rotate: false, lines: false, bortle: 4, fov: 2.6 },
-        hard:   { rotate: true,  lines: false, bortle: 6, fov: 3.6 },
+        easy:   { rotate: false, lines: true,  boundary: true,  bortle: 2, fov: 2.1 },
+        normal: { rotate: false, lines: false, boundary: false, bortle: 4, fov: 2.6 },
+        hard:   { rotate: true,  lines: false, boundary: false, bortle: 6, fov: 3.6 },
       }[btn.dataset.preset];
       for (const [k, v] of Object.entries(p)) setOpt(k, v);
     };
@@ -346,6 +360,8 @@ function wire() {
       toggleOpt('rotate');
     } else if (key === 'c') {
       toggleOpt('colour');
+    } else if (key === 'b') {
+      toggleOpt('boundary');
     } else if ((e.key === 'Enter' || e.key === ' ') && state.done) {
       // preventDefault matters: #next holds focus, so without it the key would
       // also activate the button natively and advance two rounds.
