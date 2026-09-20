@@ -17,7 +17,14 @@
   <div class="stage" id="stage">
     <canvas id="sky"></canvas>
     <div id="tip" class="tip" hidden></div>
-    <p class="help dim">drag to pan · wheel to zoom · shift-drag or <kbd>[</kbd><kbd>]</kbd> to rotate</p>
+    <div class="zoomers">
+      <button id="zoomIn" aria-label="zoom in">+</button>
+      <button id="zoomOut" aria-label="zoom out">−</button>
+    </div>
+    <p class="help dim">
+      <span class="mouse-only">drag to pan · wheel to zoom · shift-drag or <kbd>[</kbd><kbd>]</kbd> to rotate</span>
+      <span class="touch-only">drag to pan · pinch to zoom and twist</span>
+    </p>
   </div>
 
   <aside>

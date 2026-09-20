@@ -386,37 +386,96 @@ function clampView() {
 function bindCanvas() {
   const canvas = $('#sky');
   const stage = $('#stage');
-  let drag = null;
+
+  // Live pointers by id, so one finger pans and two pinch/rotate. A single
+  // `drag` variable cannot express that, and on a touchscreen the second
+  // finger would otherwise be read as a jump of the first.
+  const pointers = new Map();
+  let gesture = null;   // two-finger: { dist, angle }
+  let pan = null;       // one-finger/mouse: { x, y, moved, roll }
+
+  const pos = (e) => ({ x: e.offsetX, y: e.offsetY });
+
+  /** Centroid, spread and twist of the two live pointers. */
+  function twoFinger() {
+    const [a, b] = [...pointers.values()];
+    return {
+      cx: (a.x + b.x) / 2,
+      cy: (a.y + b.y) / 2,
+      dist: Math.hypot(a.x - b.x, a.y - b.y),
+      angle: Math.atan2(b.y - a.y, b.x - a.x) / DEG,
+    };
+  }
+
+  /** Move the sky so the position under (px, py) before the change is under it again. */
+  function keepAnchored(before, px, py) {
+    const after = makeUnprojection(viewport().params)(px, py);
+    let dra = before[0] - after[0];
+    if (dra > 180) dra -= 360;
+    else if (dra < -180) dra += 360;
+    state.view.ra0 += dra;
+    state.view.dec0 += before[1] - after[1];
+    clampView();
+  }
 
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);
-    drag = { x: e.offsetX, y: e.offsetY, moved: 0, roll: e.shiftKey };
-    stage.classList.add('dragging');
+    pointers.set(e.pointerId, pos(e));
+
+    if (pointers.size === 2) {
+      pan = null;              // a pinch is starting; abandon the pan
+      gesture = twoFinger();
+    } else if (pointers.size === 1) {
+      pan = { ...pos(e), moved: 0, roll: e.shiftKey };
+      stage.classList.add('dragging');
+    }
   });
 
   canvas.addEventListener('pointermove', (e) => {
-    if (drag) {
-      const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
-      drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.roll) {
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, pos(e));
+
+    // --- two fingers: pinch to zoom, twist to rotate, anchored at the midpoint
+    if (pointers.size === 2 && gesture) {
+      const now = twoFinger();
+      const before = makeUnprojection(viewport().params)(now.cx, now.cy);
+
+      if (gesture.dist > 8 && now.dist > 8) {
+        state.view.fov *= gesture.dist / now.dist;
+      }
+      let dAng = now.angle - gesture.angle;
+      if (dAng > 180) dAng -= 360;
+      else if (dAng < -180) dAng += 360;
+      state.view.roll += dAng;
+
+      clampView();
+      keepAnchored(before, now.cx, now.cy);
+      gesture = now;
+      render();
+      return;
+    }
+
+    // --- one finger / mouse: pan (or roll with shift held)
+    if (pan) {
+      const p = pos(e);
+      const dx = p.x - pan.x, dy = p.y - pan.y;
+      pan.moved += Math.abs(dx) + Math.abs(dy);
+      if (pan.roll) {
         state.view.roll += dx * 0.4;
       } else {
-        // Pan in degrees of sky per pixel, so drag speed matches zoom level.
-        const perPx = state.view.fov / Math.min(canvas.clientWidth, canvas.clientHeight);
-        const rr = state.view.roll * DEG;
-        const mx = dx * Math.cos(rr) + dy * Math.sin(rr);
-        const my = -dx * Math.sin(rr) + dy * Math.cos(rr);
-        // RA compresses towards the poles; without the sec(dec) term panning
-        // near Polaris crawls.
-        const sec = 1 / Math.max(0.12, Math.cos(state.view.dec0 * DEG));
-        state.view.ra0 += mx * perPx * sec;
-        state.view.dec0 += my * perPx;
+        // Drag the sky with the finger: the point grabbed stays under it,
+        // at any zoom, anywhere on the canvas -- which plain degrees-per-pixel
+        // does not manage near the poles or the rim.
+        const before = makeUnprojection(viewport().params)(pan.x, pan.y);
+        keepAnchored(before, p.x, p.y);
       }
-      drag.x = e.offsetX; drag.y = e.offsetY;
+      pan.x = p.x; pan.y = p.y;
       clampView();
       render();
       return;
     }
+
+    // --- no buttons down: hover readout (mouse only; a finger has no hover)
+    if (e.pointerType === 'touch') return;
     const r = regionAtPixel(e.offsetX, e.offsetY);
     const changed = (r && r.abbr) !== (state.hover && state.hover.abbr);
     state.hover = r;
@@ -425,17 +484,30 @@ function bindCanvas() {
     if (changed) render();
   });
 
-  const endDrag = (e) => {
-    if (!drag) return;
-    const wasClick = drag.moved < 4 && !drag.roll;
-    drag = null;
-    stage.classList.remove('dragging');
-    if (wasClick) pick(regionAtPixel(e.offsetX, e.offsetY));
-  };
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', () => { drag = null; stage.classList.remove('dragging'); });
+  function release(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) gesture = null;
+    if (pointers.size === 0) stage.classList.remove('dragging');
+  }
 
-  canvas.addEventListener('pointerleave', () => {
+  canvas.addEventListener('pointerup', (e) => {
+    // A tap is a click: short, still, and not the tail of a pinch.
+    const tap = pan && pan.moved < 8 && !pan.roll && !gesture && pointers.size === 1;
+    const p = pos(e);
+    release(e);
+    if (pointers.size === 0) pan = null;
+    if (tap) {
+      pick(regionAtPixel(p.x, p.y));
+    }
+  });
+
+  canvas.addEventListener('pointercancel', (e) => {
+    release(e);
+    if (pointers.size === 0) pan = null;
+  });
+
+  canvas.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'touch') return;
     state.hover = null;
     $('#tip').hidden = true;
     render();
@@ -443,21 +515,22 @@ function bindCanvas() {
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    // Zoom about the cursor: keep the sky position under the pointer fixed.
     const before = makeUnprojection(viewport().params)(e.offsetX, e.offsetY);
     state.view.fov *= Math.exp(e.deltaY * 0.0014);
     clampView();
-    const after = makeUnprojection(viewport().params)(e.offsetX, e.offsetY);
-    // Shift the centre by the drift at the cursor. RA differences wrap, so
-    // normalise to (-180, 180] before applying.
-    let dra = before[0] - after[0];
-    if (dra > 180) dra -= 360;
-    else if (dra < -180) dra += 360;
-    state.view.ra0 += dra;
-    state.view.dec0 += before[1] - after[1];
-    clampView();
+    keepAnchored(before, e.offsetX, e.offsetY);
     render();
   }, { passive: false });
+
+  // Zoom buttons, for touch users who would rather not pinch.
+  $('#zoomIn').addEventListener('click', () => { zoomBy(1 / 1.4); });
+  $('#zoomOut').addEventListener('click', () => { zoomBy(1.4); });
+}
+
+function zoomBy(factor) {
+  state.view.fov *= factor;
+  clampView();
+  render();
 }
 
 function showTip(e, region) {

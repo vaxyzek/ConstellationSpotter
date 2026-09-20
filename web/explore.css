@@ -16,6 +16,15 @@ main.explore .stage {
 main.explore .stage.dragging { cursor: grabbing; }
 main.explore .stage.pickable { cursor: pointer; }
 
+/* The canvas handles its own gestures. Without this the browser claims a
+   drag as a page scroll and cancels the pan mid-gesture, which makes the
+   sky almost impossible to move on a touchscreen. */
+main.explore canvas#sky {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 main.explore aside {
   height: 100%;
   min-height: 0;
@@ -89,7 +98,72 @@ main.explore aside {
 .stat b { color: var(--fg); font-weight: 600; }
 button.small { padding: 5px 10px; font-size: 13px; }
 
+/* Zoom buttons, for touch users who would rather not pinch. */
+.zoomers {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.zoomers button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  background: rgba(20, 23, 30, .82);
+}
+
+.touch-only { display: none; }
+@media (hover: none) {
+  .mouse-only { display: none; }
+  .touch-only { display: inline; }
+}
+
 @media (max-width: 860px) {
-  main.explore { grid-template-columns: 1fr; height: auto; }
-  main.explore .stage { height: 60vh; }
+  /* The page must not scroll: a tall document turns every drag on the canvas
+     into a page scroll, which is what made panning unusable on a phone.
+     Body is the viewport, header takes its natural height, main takes the
+     rest, and only the name list scrolls inside it. */
+  body {
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  header { flex: none; }
+
+  main.explore {
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    /* Sky gets the larger share; the list only needs a few rows at a time. */
+    grid-template-rows: 1.35fr minmax(0, 1fr);
+    height: auto;
+    gap: 8px;
+    padding: 8px;
+  }
+  main.explore .stage { height: 100%; }
+  main.explore aside { min-height: 0; overflow: hidden; gap: 6px; }
+
+  /* Space is scarce: the sky and the name list are the whole game. */
+  aside h3, aside label, aside .hint { display: none; }
+  aside h2 { font-size: 14px; }
+  .verdict { min-height: 0; font-size: 13px; }
+
+  /* Touch targets: the name list is the main control on a phone. */
+  .namelist button { padding: 9px 10px; }
+  .zoomers button { width: 44px; height: 44px; }
+
+  /* Space is scarce; the view toggles matter less than the list. */
+  aside label.stacked { display: none; }
+}
+
+@media (max-width: 860px) and (orientation: landscape) {
+  main.explore {
+    grid-template-columns: 1fr 260px;
+    grid-template-rows: minmax(0, 1fr);
+  }
 }
