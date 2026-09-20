@@ -1,0 +1,95 @@
+/* Explore mode: full-sky canvas plus the pick-a-name list. Layered on game.css,
+   which supplies the palette, header, buttons and form controls. */
+
+main.explore {
+  grid-template-columns: 1fr 300px;
+  height: calc(100vh - 47px);
+  padding-bottom: 12px;
+}
+
+main.explore .stage {
+  aspect-ratio: auto;
+  height: 100%;
+  position: relative;
+  cursor: grab;
+}
+main.explore .stage.dragging { cursor: grabbing; }
+main.explore .stage.pickable { cursor: pointer; }
+
+main.explore aside {
+  height: 100%;
+  min-height: 0;
+}
+
+/* Hover readout, follows the cursor. */
+.tip {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(12px, 12px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(10, 13, 20, .88);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.tip .ru { color: var(--dim); }
+
+.help {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  margin: 0;
+  text-align: center;
+  pointer-events: none;
+  font-size: 12px;
+}
+
+#filter {
+  background: #1b1f29;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 7px 10px;
+  font: inherit;
+}
+
+/* The answer list scrolls; everything else in the sidebar stays put. */
+.namelist {
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.namelist button {
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 14px;
+}
+.namelist button:hover:not(:disabled) { background: #2b313f; }
+.namelist button .ru { color: var(--dim); font-size: 12px; }
+.namelist button.solved {
+  color: var(--dim);
+  text-decoration: line-through;
+  cursor: default;
+}
+.namelist button.solved:hover { background: transparent; }
+.namelist.disabled { opacity: .45; pointer-events: none; }
+
+.stat { font-size: 13px; color: var(--dim); }
+.stat b { color: var(--fg); font-weight: 600; }
+button.small { padding: 5px 10px; font-size: 13px; }
+
+@media (max-width: 860px) {
+  main.explore { grid-template-columns: 1fr; height: auto; }
+  main.explore .stage { height: 60vh; }
+}

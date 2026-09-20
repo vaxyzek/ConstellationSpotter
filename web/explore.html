@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explore the sky — Constellation Spotter</title>
+<link rel="stylesheet" href="game.css">
+<link rel="stylesheet" href="explore.css">
+
+<header>
+  <strong>Explore the sky</strong>
+  <span id="progress" class="dim"></span>
+  <span class="grow"></span>
+  <button id="reset" class="small">start over</button>
+  <a href="index.html" class="dim">quiz mode →</a>
+</header>
+
+<main class="explore">
+  <div class="stage" id="stage">
+    <canvas id="sky"></canvas>
+    <div id="tip" class="tip" hidden></div>
+    <p class="help dim">drag to pan · wheel to zoom · shift-drag or <kbd>[</kbd><kbd>]</kbd> to rotate</p>
+  </div>
+
+  <aside>
+    <h2 id="prompt">Click a region</h2>
+    <p id="verdict" class="verdict"></p>
+
+    <input type="search" id="filter" placeholder="filter names…" autocomplete="off">
+    <div id="list" class="namelist"></div>
+
+    <h3>View</h3>
+    <label><input type="checkbox" id="colour"> star colour</label>
+    <label><input type="checkbox" id="showLines"> figure lines when solved</label>
+    <label><input type="checkbox" id="labels"> labels when solved</label>
+    <label class="stacked">
+      limiting magnitude
+      <input type="range" id="maglimit" min="3.5" max="6.5" step="0.1">
+      <output id="magOut"></output>
+    </label>
+
+    <p class="hint dim">
+      <kbd>esc</kbd> deselect · <kbd>0</kbd> reset view · progress is saved
+    </p>
+  </aside>
+</main>
+
+<script type="module" src="explore.js"></script>

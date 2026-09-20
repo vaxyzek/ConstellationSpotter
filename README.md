@@ -175,6 +175,49 @@ A round is shareable as a URL:
 `web/sky.js` — projection, star sizing, colour — is shared by the game and the
 comparison view.
 
+## Explore mode
+
+```sh
+python3 -m http.server 8765
+open http://localhost:8765/web/explore.html
+```
+
+The whole celestial sphere, pannable. Every IAU region starts unnamed; click
+one and pick its name from the list. Naming all 89 completes the sky, and the
+score is how few wrong guesses it took.
+
+| | |
+|---|---|
+| drag | pan |
+| wheel | zoom (8°–140° field), about the cursor |
+| shift-drag, `[` / `]` | rotate |
+| `0` | reset the view |
+| `esc` | deselect |
+
+A wrong guess is counted and the region stays open, so it comes back round
+later rather than being given away. Solved regions keep a faint wash, their
+figure lines and a label, so the sky visibly fills in; progress and view
+options persist in `localStorage`, and **start over** clears them.
+
+Hit-testing lives in `web/regions.js`. The boundary data is a bag of unordered
+polylines, so the rings are stitched end-to-end at load (~5 300 vertices, a few
+ms) rather than stored closed — the data files are unchanged. A point is tested
+by winding number about it, with the region's bounding spherical cap as a
+prefilter.
+
+That cap is not just an optimisation: winding is sign-blind on a sphere, so a
+region and its antipode both wind, and without the cap a click in Phoenix also
+matched Ursa Major. Regions are tested smallest-first so a small region
+enclosed by a larger one's cap still wins.
+
+Verified against `data/stars.json`: for all **8 920 stars the region found is
+the star's catalogued constellation**, with no star ever matching two regions,
+at ~0.01 ms per lookup. The three apparent exceptions are catalogue naming, not
+geometry — ρ Aql is the known case, precessed into Delphinus since the boundary
+epoch while keeping its Aquila name. Clicks were also checked at 15 positions
+(poles, the RA-0 wrap, both Serpens halves, Mensa, Microscopium) at three
+rotations each: 45/45 correct.
+
 ## Deploying
 
 The site is entirely static. `tools/build_site.py` assembles `dist/`: it

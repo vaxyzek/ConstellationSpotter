@@ -47,6 +47,36 @@ export function makeProjection({ ra0, dec0, roll = 0, scale, cx, cy }) {
 }
 
 /**
+ * The inverse of makeProjection: canvas pixel -> [ra, dec] in degrees.
+ *
+ * Needed to answer "what is under the cursor", which is how the explore mode
+ * picks a constellation. Same parameters as the forward projection; feeding it
+ * a projected point returns the original position.
+ */
+export function makeUnprojection({ ra0, dec0, roll = 0, scale, cx, cy }) {
+  const sd0 = Math.sin(dec0 * DEG), cd0 = Math.cos(dec0 * DEG);
+  const cr = Math.cos(-roll * DEG), sr = Math.sin(-roll * DEG);
+
+  return function unproject(px, py) {
+    // Undo the canvas placement and the axis flips, then the roll.
+    let x = (cx - px) / scale;
+    let y = (cy - py) / scale;
+    if (roll) {
+      const rx = x * cr - y * sr;
+      y = x * sr + y * cr;
+      x = rx;
+    }
+    const rho = Math.hypot(x, y);
+    if (rho < 1e-12) return [ra0, dec0];
+    const c = 2 * Math.atan(rho / 2);
+    const sc = Math.sin(c), cc = Math.cos(c);
+    const dec = Math.asin(Math.max(-1, Math.min(1, cc * sd0 + (y * sc * cd0) / rho)));
+    const ra = ra0 * DEG + Math.atan2(x * sc, rho * cd0 * cc - y * sd0 * sc);
+    return [((ra / DEG) % 360 + 360) % 360, dec / DEG];
+  };
+}
+
+/**
  * Apparent radius in px for a star of the given magnitude.
  *
  * The floor matters: without it everything past mag ~5.8 lands below one pixel
