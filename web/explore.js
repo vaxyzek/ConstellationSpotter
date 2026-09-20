@@ -21,11 +21,13 @@ const FOV_MAX = 140;
 const state = {
   cons: [], stars: [], regions: [], byAbbr: new Map(),
   view: { ra0: 0, dec0: 0, roll: 0, fov: 60 },
-  solved: new Map(),      // abbr -> { wrong }
+  solved: new Map(),      // abbr -> { wrong, hinted }
   selected: null,         // region awaiting an answer
   hover: null,
   wrong: 0,
-  flash: null,            // { abbr, right, until }
+  hints: 0,               // hints taken, across the whole game
+  hinted: new Set(),      // abbrs whose figure has been revealed as a hint
+  flash: null,            // { abbr, right, start, ms }
   opts: { colour: true, showLines: true, labels: true, maglimit: 5.6 },
 };
 
@@ -60,6 +62,10 @@ function restore() {
   const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
   if (!saved) return;
   state.wrong = saved.wrong || 0;
+  state.hints = saved.hints || 0;
+  for (const abbr of saved.hinted || []) {
+    if (state.byAbbr.has(abbr)) state.hinted.add(abbr);
+  }
   for (const [abbr, v] of saved.solved || []) {
     if (state.byAbbr.has(abbr)) state.solved.set(abbr, v);
   }
@@ -67,7 +73,8 @@ function restore() {
 
 function save() {
   localStorage.setItem(SAVE_KEY, JSON.stringify({
-    wrong: state.wrong, solved: [...state.solved],
+    wrong: state.wrong, hints: state.hints,
+    hinted: [...state.hinted], solved: [...state.solved],
   }));
 }
 
@@ -116,12 +123,54 @@ function pick(region) {
   render();
 }
 
+/**
+ * Reveal the selected region's figure lines.
+ *
+ * Counted once per constellation, not per press: taking the same hint twice
+ * (or after a reload, since it persists) is the same piece of help, and
+ * charging for it again would only punish re-reading.
+ */
+function takeHint() {
+  const sel = state.selected;
+  if (!sel || state.solved.has(sel.abbr)) return;
+
+  // Mensa and Microscopium genuinely have no figure -- the S&T source has no
+  // records and the IAU charts show an empty region -- so there is nothing to
+  // draw and nothing to charge for.
+  if (!sel.con.lines.length) {
+    verdict(`${sel.con.name} has no figure to show`, '');
+    return;
+  }
+
+  if (!state.hinted.has(sel.abbr)) {
+    state.hinted.add(sel.abbr);
+    state.hints += 1;
+    save();
+    renderProgress();
+  }
+  renderHintButton();
+  render();
+}
+
+function renderHintButton() {
+  const b = $('#hint');
+  const sel = state.selected;
+  b.disabled = !sel;
+  if (!sel) { b.textContent = 'hint'; return; }
+  if (!sel.con.lines.length) b.textContent = 'no figure';
+  else if (state.hinted.has(sel.abbr)) b.textContent = 'hint shown';
+  else b.textContent = 'hint';
+}
+
 function guess(abbr) {
   const sel = state.selected;
   if (!sel || state.solved.has(abbr)) return;
 
   if (abbr === sel.abbr) {
-    state.solved.set(sel.abbr, { wrong: sel.tries || 0 });
+    state.solved.set(sel.abbr, {
+      wrong: sel.tries || 0,
+      hinted: state.hinted.has(sel.abbr),
+    });
     state.flash = { abbr: sel.abbr, right: true, start: Date.now(), ms: 900 };
     const c = sel.con;
     verdict(`${full(c)} — correct`, 'right');
@@ -146,7 +195,8 @@ function guess(abbr) {
 function finish() {
   const total = state.cons.length;
   verdict(`Whole sky named — ${total} regions, ${state.wrong} wrong ` +
-          `guess${state.wrong === 1 ? '' : 'es'}.`, 'right');
+          `guess${state.wrong === 1 ? '' : 'es'}, ${state.hints} hint` +
+          `${state.hints === 1 ? '' : 's'}.`, 'right');
   $('#prompt').textContent = 'Sky complete';
 }
 
@@ -180,11 +230,13 @@ function renderProgress() {
   const done = state.solved.size, total = state.cons.length;
   $('#progress').innerHTML =
     `<span class="stat"><b>${done}</b>/${total} named · ` +
-    `<b>${state.wrong}</b> wrong</span>`;
+    `<b>${state.wrong}</b> wrong · <b>${state.hints}</b> hint` +
+    `${state.hints === 1 ? '' : 's'}</span>`;
 }
 
 function renderPrompt() {
   const p = $('#prompt');
+  renderHintButton();
   if (state.solved.size === state.cons.length) { p.textContent = 'Sky complete'; return; }
   p.textContent = state.selected
     ? 'Which constellation is this?'
@@ -275,19 +327,39 @@ function render() {
     ctx.restore();
   }
 
-  // Figure lines for regions already named.
-  if (state.opts.showLines) {
+  // Figure lines: solved regions (if that option is on), plus any region
+  // whose hint has been taken -- a hint ignores the option, since asking for
+  // it is an explicit request to see the figure.
+  {
     const byHip = hipIndex();
-    ctx.save();
-    ctx.strokeStyle = 'rgba(160,200,255,0.5)';
-    ctx.lineWidth = 1.4;
-    for (const abbr of state.solved.keys()) {
+    const drawFigure = (abbr) => {
       const c = state.byAbbr.get(abbr);
       for (const line of c.lines) {
         const pts = line.map((h) => byHip.get(h)).filter(Boolean)
           .map((s) => [s.ra, s.dec]);
         if (pts.length > 1) strokePath(ctx, project, pts);
       }
+    };
+
+    if (state.opts.showLines) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(160,200,255,0.5)';
+      ctx.lineWidth = 1.4;
+      for (const abbr of state.solved.keys()) {
+        if (state.hinted.has(abbr)) continue;   // drawn below, in hint colour
+        drawFigure(abbr);
+      }
+      ctx.restore();
+    }
+
+    // Hinted figures stand out: brighter, warmer, and drawn whether or not
+    // the region is solved yet, so the help you asked for is unmistakable.
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,214,140,0.85)';
+    ctx.lineWidth = 1.8;
+    for (const abbr of state.hinted) {
+      if (state.solved.has(abbr) && !state.opts.showLines) continue;
+      drawFigure(abbr);
     }
     ctx.restore();
   }
@@ -563,10 +635,14 @@ function bindControls() {
   });
   $('#filter').addEventListener('input', renderList);
 
+  $('#hint').addEventListener('click', takeHint);
+
   $('#reset').addEventListener('click', () => {
     if (!confirm('Clear all progress and start over?')) return;
     state.solved.clear();
+    state.hinted.clear();
     state.wrong = 0;
+    state.hints = 0;
     state.selected = null;
     save();
     verdict('', '');
@@ -582,6 +658,7 @@ function bindControls() {
       return;
     }
     if (e.key === 'Escape') { state.selected = null; renderPrompt(); renderList(); render(); }
+    else if (e.key === 'h' || e.key === 'H') { takeHint(); }
     else if (e.key === '[') { state.view.roll -= 5; render(); }
     else if (e.key === ']') { state.view.roll += 5; render(); }
     else if (e.key === '0') {
