@@ -23,8 +23,9 @@ DATA = os.path.join(ROOT, "data")
 DIST = os.path.join(ROOT, "dist")
 
 # Pages and code copied to the root of dist/.
-ASSETS = ["index.html", "compare.html", "game.js", "compare.js", "sky.js",
-          "game.css", "compare.css"]
+ASSETS = ["index.html", "compare.html", "explore.html", "game.js",
+          "compare.js", "explore.js", "regions.js", "sky.js",
+          "game.css", "compare.css", "explore.css"]
 # Datasets copied to dist/data/.
 DATASETS = ["constellations.json", "stars.json"]
 
@@ -72,7 +73,8 @@ def main():
           f"{len(DATASETS)} datasets, {n_charts} IAU charts")
     print(f"path rewrites   : {rewritten}")
     print(f"total size      : {total / 1e6:.1f} MB")
-    print("entry points    : /index.html (game), /compare.html (line check)")
+    print("entry points    : /index.html (game), /explore.html (whole sky), "
+          "/compare.html (line check)")
     return 0
 
 
