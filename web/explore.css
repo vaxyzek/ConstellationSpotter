@@ -64,15 +64,19 @@ main.explore aside {
   font: inherit;
 }
 
-/* The answer list sizes to its contents and scrolls only when long.
-   flex: 0 0 auto is deliberate: with grow the box stayed full-height and a
-   handful of remaining names rattled around in a tall scroller, and with
-   shrink the sidebar squashed it to a single row. Neither grow nor shrink
-   means the box is exactly as tall as the names in it, up to max-height. */
+/* The answer list sizes to its contents and scrolls when it cannot.
+   max-content caps the box at the height of the names in it, so a handful of
+   remaining answers sit in a short box rather than a tall scroller; grow and
+   shrink are both on so it still fits the space available, which matters on a
+   phone -- without shrink the box overflowed the clipped sidebar and the last
+   matches of a filtered list could not be reached at all. */
 .namelist {
-  flex: 0 0 auto;
-  max-height: 52vh;
+  flex: 1 1 auto;
+  min-height: 132px;
+  max-height: max-content;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 4px;
@@ -143,7 +147,9 @@ button.small { padding: 5px 10px; font-size: 13px; }
      Body is the viewport, header takes its natural height, main takes the
      rest, and only the name list scrolls inside it. */
   body {
-    height: 100dvh;
+    /* --vh is set from visualViewport when a keyboard is open (see
+       trackViewport in explore.js); 100dvh is the fallback. */
+    height: var(--vh, 100dvh);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -154,8 +160,9 @@ button.small { padding: 5px 10px; font-size: 13px; }
     flex: 1;
     min-height: 0;
     grid-template-columns: 1fr;
-    /* Sky gets the larger share; the list only needs a few rows at a time. */
-    grid-template-rows: 1.35fr minmax(0, 1fr);
+    /* Sky gets the larger share, but both rows may shrink: minmax(0,...) lets
+       the list scroll internally instead of overflowing the sidebar. */
+    grid-template-rows: minmax(0, 1.35fr) minmax(0, 1fr);
     height: auto;
     gap: 8px;
     padding: 8px;
@@ -177,6 +184,20 @@ button.small { padding: 5px 10px; font-size: 13px; }
   /* The hint button stays, but its explanatory note does not. */
   .hint-note { display: none; }
   #hint { padding: 8px 14px; }
+
+  /* Never let the list collapse to an unusable sliver. */
+  .namelist { min-height: 120px; }
+
+  /* Typing: the keyboard covers the lower half, so the sky gives up most of
+     its share and the chrome around the list goes away. Without this the list
+     was squeezed to a single clipped row. */
+  body.keyboard-open main.explore {
+    grid-template-rows: minmax(0, 0.42fr) minmax(0, 1fr);
+  }
+  body.keyboard-open .stage .help,
+  body.keyboard-open .zoomers,
+  body.keyboard-open #prompt,
+  body.keyboard-open .verdict { display: none; }
 }
 
 @media (max-width: 860px) and (orientation: landscape) {

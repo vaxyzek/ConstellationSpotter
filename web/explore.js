@@ -307,10 +307,12 @@ function render() {
   const now = Date.now();
   if (state.flash && now - state.flash.start > state.flash.ms) state.flash = null;
 
-  // Solved regions get a faint wash so the sky visibly fills in as you go.
+  // Solved regions get a wash so the sky visibly fills in as you go, and a
+  // firmer outline than the dashed boundaries below -- at a glance you should
+  // be able to see how much of the sky you have named.
   for (const r of state.regions) {
     if (!state.solved.has(r.abbr)) continue;
-    fillRegion(ctx, project, r, 'rgba(90, 150, 120, 0.085)');
+    fillRegion(ctx, project, r, 'rgba(96, 168, 132, 0.22)');
   }
 
   if (state.flash) {
@@ -330,12 +332,25 @@ function render() {
       ? 'rgba(126,214,255,0.14)' : 'rgba(126,214,255,0.07)');
   }
 
-  // All boundaries, dim; the highlighted one brighter and solid.
+  // All boundaries, dim; solved regions get a solid green edge so a named
+  // area reads as named even where the fill is hard to judge against stars.
   ctx.save();
   ctx.lineWidth = 1;
   ctx.strokeStyle = 'rgba(120,145,185,0.32)';
   ctx.setLineDash([4, 4]);
-  for (const c of state.cons) for (const poly of c.boundary) strokePath(ctx, project, poly);
+  for (const c of state.cons) {
+    if (state.solved.has(c.abbr)) continue;
+    for (const poly of c.boundary) strokePath(ctx, project, poly);
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = 'rgba(126, 214, 170, 0.55)';
+  for (const r of state.regions) {
+    if (!state.solved.has(r.abbr)) continue;
+    for (const ring of ringsAsRaDec(r)) strokePath(ctx, project, ring);
+  }
   ctx.restore();
 
   if (hl) {
@@ -450,14 +465,20 @@ function drawStars(ctx, project, W, H, limit) {
 
 function drawLabels(ctx, project, W, H) {
   ctx.save();
-  ctx.font = '12px ui-sans-serif, system-ui, sans-serif';
+  ctx.font = '600 12px ui-sans-serif, system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(200,220,255,0.65)';
+  ctx.textBaseline = 'middle';
   for (const abbr of state.solved.keys()) {
     const c = state.byAbbr.get(abbr);
     const p = project(c.center[0], c.center[1]);
     if (!p || p[2] < 0.1) continue;
     if (p[0] < 0 || p[0] > W || p[1] < 0 || p[1] > H) continue;
+    // A dark halo under the text: constellation centres often sit on a star
+    // field, and unbacked labels were getting lost in it.
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(5,7,13,0.85)';
+    ctx.strokeText(c.name, p[0], p[1]);
+    ctx.fillStyle = 'rgba(186, 240, 210, 0.92)';
     ctx.fillText(c.name, p[0], p[1]);
   }
   ctx.restore();
@@ -637,6 +658,35 @@ function showTip(e, region) {
   tip.hidden = false;
 }
 
+/**
+ * Keep the layout inside the *visible* viewport.
+ *
+ * When the on-screen keyboard opens to type in the filter, the layout
+ * viewport does not shrink -- the keyboard just covers the bottom of the page.
+ * Since the body cannot scroll here (deliberately, so drags pan the sky), the
+ * lower part of the name list ended up behind the keyboard and unreachable.
+ * visualViewport reports the area actually visible, so drive the height from
+ * it while a keyboard is up.
+ */
+function trackViewport() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const apply = () => {
+    // Only when meaningfully smaller than the window, i.e. a keyboard is open.
+    const covered = window.innerHeight - vv.height;
+    const open = covered > 80;
+    document.documentElement.style.setProperty(
+      '--vh', open ? `${Math.round(vv.height)}px` : '',
+    );
+    // The sky yields to the list while typing: with the keyboard up there is
+    // no room for both, and the thing being used is the list of names.
+    document.body.classList.toggle('keyboard-open', open);
+    render();
+  };
+  vv.addEventListener('resize', apply);
+  vv.addEventListener('scroll', apply);
+}
+
 function bindControls() {
   for (const [id, key] of [['colour', 'colour'], ['showLines', 'showLines'],
                            ['labels', 'labels']]) {
@@ -692,6 +742,7 @@ function bindControls() {
 
 bindCanvas();
 bindControls();
+trackViewport();
 load();
 
 // Exposed for debugging and for driving the view from the console/tests.
