@@ -248,19 +248,38 @@ function renderList() {
   const term = $('#filter').value.trim().toLowerCase();
   const list = $('#list');
   list.innerHTML = '';
-  const entries = [...state.cons].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Named constellations leave the list entirely. Keeping them as struck-out
+  // rows meant the list stayed 89 long however well you were doing, so the
+  // remaining answers got harder to reach the closer you were to finishing.
+  const entries = [...state.cons]
+    .filter((c) => !state.solved.has(c.abbr))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  let shown = 0;
   for (const c of entries) {
-    const solved = state.solved.has(c.abbr);
     if (term && !(`${c.name} ${c.name_ru || ''} ${c.abbr}`.toLowerCase().includes(term))) {
       continue;
     }
     const b = document.createElement('button');
-    b.className = solved ? 'solved' : '';
-    b.disabled = solved;
     b.innerHTML = `${c.name}${c.name_ru ? ` <span class="ru">${c.name_ru}</span>` : ''}`;
     b.addEventListener('click', () => guess(c.abbr));
     list.appendChild(b);
+    shown += 1;
   }
+
+  if (!shown) {
+    const empty = document.createElement('p');
+    empty.className = 'empty dim';
+    empty.textContent = entries.length
+      ? 'No name matches that filter'
+      : 'Every constellation named';
+    list.appendChild(empty);
+  }
+
+  $('#remaining').textContent = entries.length
+    ? `${entries.length} left`
+    : '';
 }
 
 function syncControls() {

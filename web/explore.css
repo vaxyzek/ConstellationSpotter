@@ -64,10 +64,14 @@ main.explore aside {
   font: inherit;
 }
 
-/* The answer list scrolls; everything else in the sidebar stays put. */
+/* The answer list sizes to its contents and scrolls only when long.
+   flex: 0 0 auto is deliberate: with grow the box stayed full-height and a
+   handful of remaining names rattled around in a tall scroller, and with
+   shrink the sidebar squashed it to a single row. Neither grow nor shrink
+   means the box is exactly as tall as the names in it, up to max-height. */
 .namelist {
-  flex: 1;
-  min-height: 80px;
+  flex: 0 0 auto;
+  max-height: 52vh;
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -86,13 +90,14 @@ main.explore aside {
 }
 .namelist button:hover:not(:disabled) { background: #2b313f; }
 .namelist button .ru { color: var(--dim); font-size: 12px; }
-.namelist button.solved {
-  color: var(--dim);
-  text-decoration: line-through;
-  cursor: default;
-}
-.namelist button.solved:hover { background: transparent; }
 .namelist.disabled { opacity: .45; pointer-events: none; }
+.namelist .empty { margin: 8px; font-size: 13px; text-align: center; }
+
+.listhead { font-size: 12px; margin: -2px 2px -4px; }
+
+/* The completion message runs to two lines; without room for it the text
+   overlapped the hint row below. */
+main.explore .verdict { min-height: 0; }
 
 .stat { font-size: 13px; color: var(--dim); }
 .stat b { color: var(--fg); font-weight: 600; }
